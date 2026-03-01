@@ -35,7 +35,6 @@ def insert(table:str, kargs:dict):
     query += str(list(str(key) for key in list(kargs.keys()))).replace('[','(').replace(']',')')
     query += ' VALUES ' + str(tuple('?' for _ in range(len(kargs)))).replace('\'', '').replace(',)', ')')
     # Ejecuta la query
-    print(query)
     cursor.execute(query, list(kargs.values()))
     conn.commit()
 
@@ -56,21 +55,20 @@ def update(id_item, nuevo_nombre):
     print(f"[bold yellow]⚠ Item {id_item} actualizado a '{nuevo_nombre}'.[/bold yellow]")
 
 
-def delete(id_item):
+def delete(table:str, key:str, value, operator:str='=='):
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM items WHERE id = ?", (id_item,))
+    query = f'DELETE FROM {table} WHERE {key} {operator} {value}'
+    cursor.execute(query)
     conn.commit()
-    print(f"[bold red]✘ Item {id_item} eliminado.[/bold red]")
 
 
 
-def search_tags (thought:str):
+def search_tags(thought:str):
     """Encuentra posibles tags para un texto dado"""
     saved_tags = select(TABLE_TAG) # expected: <list>[ (id, name), (id, name), ... ]
     tags_founded = []
     thought = thought.lower()
-    print(saved_tags)
     for tag in saved_tags:
         tag = tag[1] # the second value is the name of tag
         if tag in thought:
@@ -78,28 +76,72 @@ def search_tags (thought:str):
     return ' '.join(tags_founded)
 
 
+def command(command:str):
+    match (command):
+        case 'tags': # Muestra las tags disponibles
+            tags = select(TABLE_TAG)
+            print('[bold]Tags available:')
+            for tag in tags:
+                print(f'  {tag[1]}')
+        case _: # Default
+            return
 
 
 def main ():
-    # Obtener argumentos
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--add-tags",
-        nargs='*',
-    )
-    # Procesar argumentos
-    args = parser.parse_args().add_tags
+    try:
+        # Obtener argumentos
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--add-tags",
+            nargs='*',
+        )
+        parser.add_argument(
+            "--rm-tags",
+            nargs='*',
+        )
+        # Procesar argumentos
+        args = parser.parse_args()
 
-    if args:
-        for arg in args:
-            insert(TABLE_TAG, {'name':arg})
-        return
+        # Agregar tags si se pasan
+        if args.add_tags:
+            args = args.add_tags
+            for arg in args:
+                insert(TABLE_TAG, {'name':arg})
+            return
 
-    print('[bold]Thought: [/bold]', end='')
-    thought = input()
-    tags = search_tags(thought)
+        if args.rm_tags:
+            args = args.rm_tags
+            for arg in args:
+                delete(TABLE_TAG, 'name', f"'{arg}'")
+            return
 
+        # Pedir thought
+        print('[bold]Thought: [/bold]', end='')
+        thought = input()
 
+        # Verificar si la entrada es un comando (empieza con punto)
+        if thought[0] == '.':
+            command(thought.split('.')[1])
+            return
 
-    insert(TABLE_THOUGHT, {'tags':tags, 'content':thought, 'timestamp':datetime.now().isoformat()})
-    print(select(TABLE_THOUGHT))
+        # Encontrar posibles tags
+        tags = search_tags(thought)
+
+        # Imprimir y agregar tags
+        while True:
+            print('[bold cyan]  tags:[/bold cyan]')
+            for tag in tags.split():
+                print(f'[bold]    {tag}[/bold]')
+            # Pedir tags
+            print('[bold]Add tags: [/bold]', end='')
+            add_tags = input()
+            if add_tags:
+                tags = ' '.join(set(tags.split()) ^ set(search_tags(add_tags).split()))
+            else:
+                break
+
+        insert(TABLE_THOUGHT, {'tags':tags, 'content':thought, 'timestamp':datetime.now().isoformat()})
+        print(select(TABLE_THOUGHT))
+    except Exception as e:
+        raise e
+        #print(f'[bold red]Exception:[/bold red] [white]{e}[/white]')
