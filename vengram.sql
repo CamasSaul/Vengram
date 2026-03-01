@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS thought (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tags TEXT,
+    timestamp DATETIME,
+    deprecated INTEGER,
+    content TEXT UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS tag (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE
+);

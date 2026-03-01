@@ -1,0 +1,9 @@
+[project]
+name = "vengram"
+version = "0.1.0"
+dependencies = [
+    "rich",
+]
+
+[project.scripts]
+vengram = "vengram:main"
