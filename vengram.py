@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 import argparse
 
@@ -69,6 +70,7 @@ def search_tags(thought:str):
     saved_tags = select(TABLE_TAG) # expected: <list>[ (id, name), (id, name), ... ]
     tags_founded = []
     thought = thought.lower()
+    thought = re.sub('[^a-zA-Z0-9]', ' ', thought).split()
     for tag in saved_tags:
         tag = tag[1] # the second value is the name of tag
         if tag in thought:
@@ -88,60 +90,56 @@ def command(command:str):
 
 
 def main ():
-    try:
-        # Obtener argumentos
-        parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "--add-tags",
-            nargs='*',
-        )
-        parser.add_argument(
-            "--rm-tags",
-            nargs='*',
-        )
-        # Procesar argumentos
-        args = parser.parse_args()
+    # Obtener argumentos
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--add-tags",
+        nargs='*',
+    )
+    parser.add_argument(
+        "--remove-tags",
+        nargs='*',
+    )
+    # Procesar argumentos
+    args = parser.parse_args()
 
-        # Agregar tags si se pasan
-        if args.add_tags:
-            args = args.add_tags
-            for arg in args:
-                insert(TABLE_TAG, {'name':arg})
-            return
+    # Agregar tags si se pasan
+    if args.add_tags:
+        args = args.add_tags
+        for arg in args:
+            insert(TABLE_TAG, {'name':arg})
+        return
 
-        if args.rm_tags:
-            args = args.rm_tags
-            for arg in args:
-                delete(TABLE_TAG, 'name', f"'{arg}'")
-            return
+    if args.remove_tags:
+        args = args.remove_tags
+        for arg in args:
+            delete(TABLE_TAG, 'name', f"'{arg}'")
+        return
 
-        # Pedir thought
-        print('[bold]Thought: [/bold]', end='')
-        thought = input()
+    # Pedir thought
+    print('[bold]Thought: [/bold]', end='')
+    thought = input()
 
-        # Verificar si la entrada es un comando (empieza con punto)
-        if thought[0] == '.':
-            command(thought.split('.')[1])
-            return
+    # Verificar si la entrada es un comando (empieza con punto)
+    if thought[0] == '.':
+        command(thought.split('.')[1])
+        return
 
-        # Encontrar posibles tags
-        tags = search_tags(thought)
+    # Encontrar posibles tags
+    tags = search_tags(thought)
 
-        # Imprimir y agregar tags
-        while True:
-            print('[bold cyan]  tags:[/bold cyan]')
-            for tag in tags.split():
-                print(f'[bold]    {tag}[/bold]')
-            # Pedir tags
-            print('[bold]Add tags: [/bold]', end='')
-            add_tags = input()
-            if add_tags:
-                tags = ' '.join(set(tags.split()) ^ set(search_tags(add_tags).split()))
-            else:
-                break
+    # Imprimir y agregar tags
+    while True:
+        print('[bold cyan]  tags:[/bold cyan]')
+        for tag in tags.split():
+            print(f'[bold]    {tag}[/bold]')
+        # Pedir tags
+        print('[bold]Add tags: [/bold]', end='')
+        add_tags = input()
+        if add_tags:
+            tags = ' '.join(set(tags.split()) ^ set(search_tags(add_tags).split()))
+        else:
+            break
 
-        insert(TABLE_THOUGHT, {'tags':tags, 'content':thought, 'timestamp':datetime.now().isoformat()})
-        print(select(TABLE_THOUGHT))
-    except Exception as e:
-        raise e
-        #print(f'[bold red]Exception:[/bold red] [white]{e}[/white]')
+    insert(TABLE_THOUGHT, {'tags':tags, 'content':thought, 'timestamp':datetime.now().isoformat()})
+    print(select(TABLE_THOUGHT))
