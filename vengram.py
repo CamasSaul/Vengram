@@ -40,10 +40,21 @@ def insert(table:str, kargs:dict):
     conn.commit()
 
 
-def select(table):
+def select(table, conditions:list=[]):
+    [{
+        'column': 'content',
+        'operator': '==',
+        'value': '%word%'
+    }]
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute(f'SELECT * FROM {table}')
+    query = f'SELECT * FROM {table}'
+    if conditions:
+        query += ' WHERE '
+        for cond in conditions:
+            query += f'{cond['column']} {cond['operator']} {cond['value']}'
+    print(query)
+    cursor.execute(query)
     rows = cursor.fetchall()
     return rows
 
@@ -78,13 +89,21 @@ def search_tags(thought:str):
     return ' '.join(tags_founded)
 
 
+def search_4keyword(keyword):
+    result = select(TABLE_THOUGHT, [{'column': 'content', 'operator':'LIKE', 'value':f'\'{keyword}\''}])
+    print(result)
+
+
 def command(command:str):
-    match (command):
+    command = command.split()
+    match (command[0]):
         case 'tags': # Muestra las tags disponibles
             tags = select(TABLE_TAG)
             print('[bold]Tags available:')
             for tag in tags:
                 print(f'  {tag[1]}')
+        case 'search':
+            search_4keyword(command[1])
         case _: # Default
             return
 
